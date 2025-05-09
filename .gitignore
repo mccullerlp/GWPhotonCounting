@@ -171,3 +171,4 @@ cython_debug/
 *.png
 *.pdf
 *.nc
+*.dat
