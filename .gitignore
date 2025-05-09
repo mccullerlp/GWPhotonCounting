@@ -168,3 +168,6 @@ cython_debug/
 *.log
 *.out
 *.txt
+*.png
+*.pdf
+*.nc
