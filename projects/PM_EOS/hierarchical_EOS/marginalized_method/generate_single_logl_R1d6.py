@@ -35,13 +35,12 @@ detector_sqz = GWPhotonCounting.detector.Detector(
 #Loading in the individual analysis from the sample
 KNNModel = GWPhotonCounting.signal.PostMergerKNN(knn_file_path='/home/ethan.payne/code_libraries/apr4_knn_gw_model_2024/KNN_Models/APR4-knn_model-N100')
 LorentzianModel = GWPhotonCounting.signal.PostMergerLorentzian()
-dataset = np.genfromtxt(f'/home/ethan.payne/projects/GWPhotonCounting/projects/PM_EOS/hierarchical_EOS/bns_pm_dataset_MLE_250502_clean.dat')
+dataset = np.genfromtxt(f'/home/ethan.payne/projects/GWPhotonCounting/projects/PM_EOS/hierarchical_EOS/bns_pm_dataset_MLE_250509.dat')
 
 mtots, z, phi, psi, ra, dec, iota, f0_fit, gamma_fit, A_fit, phase_fit, snr, snr_sqz = dataset[idx]
 print('SNRs are: ', snr, snr_sqz)
 
-amplitude_samples = dataset[:, 9] * Planck18.luminosity_distance( dataset[:,1]).value / \
-    Planck18.luminosity_distance(z).value
+amplitude_samples = dataset[:, 9] #* Planck18.luminosity_distance( dataset[:,1]).value /Planck18.luminosity_distance(z).value
 gamma_samples = dataset[:, 8]
 
 # Compute the expected number of photons and the strain
@@ -171,5 +170,5 @@ data = {'logls':list(likelihood_event_i),
         'snr':float(snr), 'snr_sqz':float(snr_sqz), 'mtot':mtots, 'z':z, 'phi':phi, 'psi':psi, 'ra':ra, 'dec':dec, 'iota':iota, 'f0_fit':f0_fit, 
         'gamma_fit':gamma_fit, 'A_fit':A_fit, 'phase_fit':phase_fit}
 
-with open(f'results_250507/result_CE_{idx}.json', 'w') as f:
+with open(f'results_250512/result_CE_{idx}.json', 'w') as f:
     json.dump(data, f)
