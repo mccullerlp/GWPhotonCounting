@@ -144,7 +144,8 @@ class GaussianStrainLikelihood():
         '''
 
         duration = 1/(frequencies[1]  - frequencies[0])
-        norm1 = 0.5 * duration**0.5
+        norm1 = (duration/2)**0.5 # 0.5 *duration**0.5
+        np.random.seed()
         re1, im1 = norm1*random.normal(random.PRNGKey(np.random.randint(0,100000)), shape=(2, len(frequencies[frequencies>=0])))
         white_noise_pos = re1 + 1j * im1
 
@@ -156,7 +157,7 @@ class GaussianStrainLikelihood():
 
         residual = observed_data - model_data
 
-        return - 0.5  * jnp.real(jnp.einsum('ij, ij -> i', residual,jnp.conj(residual)/psd_data)) * (frequencies[1]-frequencies[0]) # note no factor of two since the psd is defined in negative and positive frequencies
+        return - jnp.real(jnp.einsum('ij, ij -> i', residual,jnp.conj(residual)/psd_data)) * (frequencies[1]-frequencies[0]) # note no factor of two since the psd is defined in negative and positive frequencies
     
     def __call__(self, observed_data, model_data, psd_data, frequencies):
         """

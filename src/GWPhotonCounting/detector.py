@@ -8,7 +8,7 @@ import bilby
 
 class Detector:
     def __init__(self, frequencies, shot_noise_psd, classical_noise_psd, detector_asd=False, ifo_name='CE',
-                 base_filter_function=lorentzian_complex, N_frequency_spaces=15,
+                 base_filter_function=lorentzian_complex, N_frequency_spaces=15, N_time_spaces=10,
                  minimum_frequency=1.5e3, maximum_frequency=4e3, maximum_duration=4e-2,
                  random_seed=1234, gaussian_noise=False, **kwargs):
         # Load and interpolate shot noise PSD data
@@ -28,8 +28,11 @@ class Detector:
         
         # Setting up the spacing of the temporal mode filters
         self.N_total_filters = int(2 * maximum_duration * (maximum_frequency - minimum_frequency))
-        self.N_time_spaces = int(self.N_total_filters/N_frequency_spaces/2)
+        self.N_time_spaces = N_time_spaces
         self.N_frequency_spaces = N_frequency_spaces
+
+        print('N_total_filters for Nyquist:', self.N_total_filters)
+        print('N_total_filters from user:', self.N_time_spaces*self.N_frequency_spaces * 2)
         
         self.f0_values = jnp.linspace(minimum_frequency, maximum_frequency, N_frequency_spaces)
         self.t0_values = jnp.linspace(-maximum_duration/2, maximum_duration/2, self.N_time_spaces)
@@ -74,7 +77,7 @@ class Detector:
         
         key = jax.random.PRNGKey(random_seed)
         shuffled_indices = jax.random.permutation(key, self.N_total_filters)
-        orthonormalized_filters = gram_schmidt(filter_functions[shuffled_indices])/jnp.sqrt(frequencies[1] - frequencies[0])
+        orthonormalized_filters = gram_schmidt(filter_functions[shuffled_indices]/jnp.sqrt(self.shot_noise_psd))/jnp.sqrt(frequencies[1] - frequencies[0])
 
         shuffled_filter_labels = []
         for i in shuffled_indices:
@@ -104,9 +107,9 @@ class Detector:
 
         return noise_photon_expectation
     
-    def calculate_optimal_snr(self, strain, frequencies, fmin = 1.5e3, fmax = 4e3):
+    def calculate_optimal_snr(self, strain, frequencies, fmin = 100, fmax = 4e3):
         mask1 = (frequencies >= fmin) & (frequencies <= fmax)
         mask2 = (frequencies <= -fmin) & (frequencies >= -fmax)
         mask = mask1 | mask2
-        optimal_snr = (np.real(np.sum(strain[mask] * np.conj(strain[mask])/self.total_psd[mask]))*(frequencies[1]-frequencies[0]))**0.5
+        optimal_snr = (2*np.real(np.sum(strain[mask] * np.conj(strain[mask])/self.total_psd[mask]))*(frequencies[1]-frequencies[0]))**0.5
         return optimal_snr

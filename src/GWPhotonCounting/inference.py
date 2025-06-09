@@ -101,7 +101,7 @@ class PhotonCountingInference(BaseInference):
 
         if time_reconstruction:
             # Marginalize back over the time axis
-            t0s = jnp.linspace(-0.02, 0.02, 2000)
+            t0s = jnp.linspace(-0.02, 0.02, 1000)
 
             resampled_t0_vals = jnp.zeros((num_chains, num_samples))
 
@@ -141,8 +141,8 @@ class StrainInference(BaseInference):
                 A = numpyro.sample('A', dist.Uniform(0,1e-19))
                 f0 = numpyro.sample('f0', dist.Uniform(f0min, f0max))
                 gamma = numpyro.sample('gamma', dist.Uniform(0,400))
-                phase = numpyro.sample('phase', dist.Uniform(0,2*jnp.pi)) 
-                t0s = jnp.linspace(-0.02, 0.02, 100)
+                phase = numpyro.sample('phase', dist.Uniform(0,2*jnp.pi))
+                t0s = jnp.linspace(-0.02, 0.02, 100) #+ numpyro.sample('tjitter', dist.Uniform(0,0.04/100))
             
                 expected_strain_signal = LorentzianModel.generate_strain(self.detector, self.frequencies, f0=f0, gamma=gamma, A=A, phase=phase, t0=t0s)
 
@@ -169,7 +169,7 @@ class StrainInference(BaseInference):
 
         if time_reconstruction:
             # Marginalize back over the time axis
-            t0s = jnp.linspace(-0.02, 0.02, 2000)
+            t0s = jnp.linspace(-0.02, 0.02, 1000)
 
             resampled_t0_vals = jnp.zeros((num_chains, num_samples))
 
@@ -178,7 +178,7 @@ class StrainInference(BaseInference):
                     expected_strain_signal = LorentzianModel.generate_strain(self.detector, self.frequencies, f0=fit.posterior['f0'].values[n_chain, n_sample], 
                                                                             gamma=fit.posterior['gamma'].values[n_chain, n_sample], 
                                                                             A=fit.posterior['A'].values[n_chain, n_sample], 
-                                                                            phase=fit.posterior['phase'].values[n_chain, n_sample], t0=t0s)
+                                                                            phase=fit.posterior['phase'].values[n_chain, n_sample], t0=t0s )#+ fit.posterior['tjitter'].values[n_chain, n_sample])
                     
                     log_likelihood_postmerger = self.likelihood.log_likelihood(data, expected_strain_signal, noise_scale * self.detector.shot_noise_psd + self.detector.classical_noise_psd, self.frequencies)
 
