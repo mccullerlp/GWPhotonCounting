@@ -102,7 +102,7 @@ for N in tqdm(range(int(1.7e4))):
                 bns_pm_dataset.append([mtots, z, phi, psi, ra, dec, iota, f0_fit, gamma_fit, 10**log10A_fit, phase_fit, float(snr_CE), float(SNR_CEsilica)])
 
 bns_pm_dataset = np.array(bns_pm_dataset)
-np.savetxt('bns_pm_dataset_MLE_250509.dat', bns_pm_dataset, 
+np.savetxt('bns_pm_dataset_MLE_250609.dat', bns_pm_dataset, 
            header='mtots z phi psi ra dec iota f0_fit gamma_fit A_fit phase_fit snr snr_sqz')
 
 # Plotting the distribution of signals 
