@@ -9,7 +9,7 @@ import bilby
 class Detector:
     def __init__(self, frequencies, shot_noise_psd, classical_noise_psd, detector_asd=False, ifo_name='CE',
                  base_filter_function=lorentzian_complex, N_frequency_spaces=15, N_time_spaces=10,
-                 minimum_frequency=.6e3, maximum_frequency=4e3, maximum_duration=4e-2,
+                 minimum_frequency=1.5e3, maximum_frequency=4e3, maximum_duration=4e-2,
                  random_seed=1234, gaussian_noise=False, **kwargs):
         # Load and interpolate shot noise PSD data
         if detector_asd is False:
@@ -26,8 +26,6 @@ class Detector:
         # Generate the total PSD
         self.total_psd = self.shot_noise_psd + self.classical_noise_psd
         
-        self.minimum_frequency = minimum_frequency
-        self.maximum_frequency = maximum_frequency
         # Setting up the spacing of the temporal mode filters
         self.N_total_filters = int(2 * maximum_duration * (maximum_frequency - minimum_frequency))
         self.N_time_spaces = N_time_spaces
@@ -36,8 +34,8 @@ class Detector:
         print('N_total_filters for Nyquist:', self.N_total_filters)
         print('N_total_filters from user:', self.N_time_spaces*self.N_frequency_spaces * 2)
         
-        self.f0_values = jnp.geomspace(minimum_frequency, maximum_frequency, N_frequency_spaces)
-        self.t0_values = jnp.linspace(-maximum_duration * 1/4, maximum_duration * 3/4, self.N_time_spaces)
+        self.f0_values = jnp.linspace(minimum_frequency, maximum_frequency, N_frequency_spaces)
+        self.t0_values = jnp.linspace(-maximum_duration/2, maximum_duration/2, self.N_time_spaces)
 
         # Construct the arrays of filter functions
         self.filter_functions, self.filter_labels = self._construct_filter_functions(
@@ -80,14 +78,7 @@ class Detector:
         key = jax.random.PRNGKey(random_seed)
         shuffled_indices = jax.random.permutation(key, self.N_total_filters)
         orthonormalized_filters = gram_schmidt(filter_functions[shuffled_indices]/jnp.sqrt(self.shot_noise_psd))/jnp.sqrt(frequencies[1] - frequencies[0])
-        dF = frequencies[1] - frequencies[0]
 
-        print("FSHAPE", orthonormalized_filters.shape)
-        efficiencies = jnp.einsum('ij, ji -> i',orthonormalized_filters, (orthonormalized_filters.T.conjugate())) * dF
-        print('eff', np.average(efficiencies.real))
-        select = (frequencies > 500)
-        efficiencies15 = (jnp.einsum('ij, ji -> i',orthonormalized_filters[:, select], (orthonormalized_filters[:, select].T.conjugate())) * dF).real * 2
-        print('eff15', np.average(efficiencies15))
         shuffled_filter_labels = []
         for i in shuffled_indices:
             shuffled_filter_labels.append(filter_labels[i])
@@ -101,23 +92,8 @@ class Detector:
         integral = jnp.einsum('...k, jk -> ...j', jnp.conj(quanta_amplitude), self.filter_functions * jnp.diff(frequencies, append=frequencies[-1]))
 
         signal_photon_expectation = jnp.abs(integral)**2
-
+        
         return signal_photon_expectation
-
-    def calculate_signal_photon_expectation_self(self, strain, frequencies):
-        quanta_amplitude = strain/jnp.sqrt(2 * self.shot_noise_psd)
-
-        dF = frequencies[1] - frequencies[0]
-        norm = np.sqrt(jnp.einsum('...j, j -> ...',quanta_amplitude, (quanta_amplitude.T.conjugate())) * dF)
-        integral_self = jnp.einsum('...k, k -> ...', jnp.conj(quanta_amplitude), quanta_amplitude * jnp.diff(frequencies, append=frequencies[-1])) / norm
-        select = (frequencies < self.maximum_frequency + 100) & (frequencies > self.minimum_frequency - 100)
-
-        # now get the value restricted to positive frequency band
-        quanta_amplitude = quanta_amplitude[select]
-        frequencies = frequencies[select]
-
-        integral_self2 = (jnp.einsum('...k, k -> ...', jnp.conj(quanta_amplitude), quanta_amplitude * jnp.diff(frequencies, append=frequencies[-1])) / norm).real * 2
-        return np.abs(integral_self)**2, np.abs(integral_self2)**2
 
     def calculate_noise_photon_expectation(self, frequencies):
         noise_photon_expectation = jnp.zeros(self.N_total_filters, dtype=float)

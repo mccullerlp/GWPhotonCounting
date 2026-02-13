@@ -70,7 +70,7 @@ def generate_count_plot(data, detector):
     plt.scatter(points.T[0], points.T[1], c=cmap(color_values.T[1]), edgecolor="k", marker=MarkerStyle("o", fillstyle="left"), s=70)
 
     ax2 = fig.add_axes([0.125, 0.9, 0.7775, 0.03])
-    cb = mpl.colorbar.ColorbarBase(ax2, cmap=cmap, label=r'$\bar{n}_{k}$ [quanta]', norm=norm,
+    cb = mpl.colorbar.ColorbarBase(ax2, cmap=cmap, label=r'$\bar{N}_{k}$ [quanta]', norm=norm,
                                 boundaries=bounds, format='%.2f', orientation='horizontal')
 
 
@@ -148,7 +148,7 @@ def generate_count_plot_with_strain(data, detector, frequencies, strain):
 
 
     ax2 = fig.add_axes([0.125, 0.9, 0.7775, 0.03])
-    cb = mpl.colorbar.ColorbarBase(ax2, cmap=cmap, label=r'$\bar{n}_{\textrm{sig},k}$ [quanta]', norm=norm,
+    cb = mpl.colorbar.ColorbarBase(ax2, cmap=cmap, label=r'$\bar{N}_{\textrm{sig},k}$ [quanta]', norm=norm,
                                 boundaries=bounds, format='%.2f', orientation='horizontal')
 
     ax2.xaxis.set_ticks_position('top')
