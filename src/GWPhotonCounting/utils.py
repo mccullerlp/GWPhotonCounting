@@ -25,9 +25,10 @@ def lorentzian_complex(f, f0, gamma, A, phase):
 
     TODO fix normalization
     """
-    return A * gamma * \
-        (jnp.exp(-1j * phase)/(gamma + 1j*(f0 - f)) +
-         jnp.exp(1j * phase)/(gamma - 1j*(f0 + f)))
+    return ( A * gamma *
+         ( jnp.exp(-1j * phase)/(gamma - 1j*(f0 - f))
+           + jnp.exp(1j * phase)/(gamma + 1j*(f0 + f))
+         ))
 
 def gram_schmidt(X):
     Q, R = np.linalg.qr(X.T)

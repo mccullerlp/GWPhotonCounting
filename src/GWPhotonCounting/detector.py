@@ -9,7 +9,7 @@ import bilby
 class Detector:
     def __init__(self, frequencies, shot_noise_psd, classical_noise_psd, detector_asd=False, ifo_name='CE',
                  base_filter_function=lorentzian_complex, N_frequency_spaces=15, N_time_spaces=10,
-                 minimum_frequency=.6e3, maximum_frequency=4e3, maximum_duration=4e-2,
+                 minimum_frequency=.6e3, maximum_frequency=4e3, maximum_duration=6e-2,
                  random_seed=1234, gaussian_noise=False, **kwargs):
         # Load and interpolate shot noise PSD data
         if detector_asd is False:
@@ -29,11 +29,12 @@ class Detector:
         self.minimum_frequency = minimum_frequency
         self.maximum_frequency = maximum_frequency
         # Setting up the spacing of the temporal mode filters
-        self.N_total_filters = int(2 * maximum_duration * (maximum_frequency - minimum_frequency))
+        self.N_nyquist = int(2 * maximum_duration * (maximum_frequency - minimum_frequency))
         self.N_time_spaces = N_time_spaces
         self.N_frequency_spaces = N_frequency_spaces
+        self.N_total_filters = self.N_time_spaces*self.N_frequency_spaces * 2
 
-        print('N_total_filters for Nyquist:', self.N_total_filters)
+        print('N_total_filters for Nyquist:', self.N_nyquist)
         print('N_total_filters from user:', self.N_time_spaces*self.N_frequency_spaces * 2)
         
         self.f0_values = jnp.geomspace(minimum_frequency, maximum_frequency, N_frequency_spaces)
@@ -65,6 +66,8 @@ class Detector:
         filter_functions_at_t0 = jnp.concatenate([
             jnp.array([filter_function(frequencies, f0=f0, A=1, phase=0, **kwargs) for f0 in self.f0_values]),
             jnp.array([filter_function(frequencies, f0=f0, A=1, phase=jnp.pi/2, **kwargs) for f0 in self.f0_values])])
+        # for testing inefficiency
+        # filter_functions_at_t0 = filter_functions_at_t0.conjugate()
         
         filter_labels_f0_t0 = [(f0, t0) for f0 in self.f0_values for t0 in self.t0_values]
 
@@ -136,4 +139,11 @@ class Detector:
         mask2 = (frequencies <= -fmin) & (frequencies >= -fmax)
         mask = mask1 | mask2
         optimal_snr = (2*np.real(np.sum(strain[mask] * np.conj(strain[mask])/self.total_psd[mask]))*(frequencies[1]-frequencies[0]))**0.5
+        return optimal_snr
+
+    def calculate_inner_product(self, strain1, strain2, frequencies, fmin = 100, fmax = 4e3):
+        mask1 = (frequencies >= fmin) & (frequencies <= fmax)
+        mask2 = (frequencies <= -fmin) & (frequencies >= -fmax)
+        mask = mask1 | mask2
+        optimal_snr = (2*np.abs(np.sum(strain1[mask] * np.conj(strain2[mask])/self.total_psd[mask]))*(frequencies[1]-frequencies[0]))**0.5
         return optimal_snr

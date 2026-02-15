@@ -7,7 +7,7 @@
 #SBATCH --cpus-per-task=2             # Number of CPU cores per task
 #SBATCH --mem=4G                      # Memory per node
 #SBATCH --time=01:40:00               # Time limit hrs:min:sec
-#SBATCH --array=0-9                   # Run a job array with task IDs 0 to 9
+#SBATCH --array=0-999                 # Run a job array with task IDs 0 to 9
 
 # --- Environment Setup ---
 ## Load Anaconda module (adjust as per your cluster's setup)
