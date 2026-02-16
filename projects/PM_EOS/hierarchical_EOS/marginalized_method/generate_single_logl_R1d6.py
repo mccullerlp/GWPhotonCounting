@@ -22,7 +22,7 @@ from tqdm import tqdm
 import jax
 
 import os
-directory_path = "results_260215b/"
+directory_path = "results_260216b/"
 os.makedirs(directory_path, exist_ok=True)
 
 fname = directory_path + f'result_CE_{idx}.json'
@@ -48,34 +48,38 @@ print("dF", frequencies[-1] - frequencies[-2])
 detector_nosqz = GWPhotonCounting.detector.Detector(
     frequencies, '/home/mcculler/projects/GWPhotonCounting/examples/data/CE_shot_psd_nosqz.csv',
     '/home/mcculler/projects/GWPhotonCounting/examples/data/CE_classical_psd.csv',
-    gamma=80, random_seed=1632, N_frequency_spaces=17*2, N_time_spaces=8)
+    gamma=20, random_seed=1632, N_frequency_spaces=80, N_time_spaces=3)
 
 detector_sqz = GWPhotonCounting.detector.Detector(
     frequencies, '/home/mcculler/projects/GWPhotonCounting/examples/data/CE_total_psd_sqz.csv', None,
-    gamma=80, random_seed=1632, N_frequency_spaces=17*2, N_time_spaces=8)
+    gamma=20, random_seed=1632, N_frequency_spaces=80, N_time_spaces=3)
 
 
 #Loading in the individual analysis from the sample
 KNNModel = GWPhotonCounting.signal.PostMergerKNN(knn_file_path='/home/mcculler/photon_counting/apr4_knn_gw_model_2024/KNN_Models/APR4-knn_model-N100')
 LorentzianModel = GWPhotonCounting.signal.PostMergerLorentzian()
-dataset = np.genfromtxt(f'/home/mcculler/projects/GWPhotonCounting/projects/PM_EOS/hierarchical_EOS/bns_pm_dataset_MLE_260213.dat') #bns_pm_dataset_MLE_250609
+#dataset = np.genfromtxt(f'/home/mcculler/projects/GWPhotonCounting/projects/PM_EOS/hierarchical_EOS/bns_pm_dataset_MLE_260213.dat') #bns_pm_dataset_MLE_250609
+dataset = np.genfromtxt(f'/home/mcculler/projects/GWPhotonCounting/projects/PM_EOS/hierarchical_EOS/bns_pm_dataset_MLE_260214.dat') #bns_pm_dataset_MLE_250609
 #dataset = np.genfromtxt(f'/home/mcculler/projects/GWPhotonCounting/projects/PM_EOS/hierarchical_EOS/bns_pm_dataset_MLE_250609.dat') #bns_pm_dataset_MLE_250609
 
 # OK, now sorting on SNR for the first 10000!!!
 if idx <= 10000:
-    mtots, z, phi, psi, ra, dec, iota, f0_fit, gamma_fit, A_fit, phase_fit, snr, snr_sqz = dataset[:10000].T
+    #mtots, z, phi, psi, ra, dec, iota, f0_fit, gamma_fit, A_fit, phase_fit, snr, snr_sqz = dataset[:10000, :13].T
+    mtots, z, phi, psi, ra, dec, iota, f0_fit, gamma_fit, A_fit, phase_fit, t0, snr, snr_sqz = dataset[:10000, :14].T
     #print(dataset.shape)
     #print(snr.shape)
     snr_idx = np.argsort(-snr)
     #print(snr_idx.shape)
     sorted_dataset = dataset[snr_idx]
     #print(sorted_dataset.shape)
-    mtots, z, phi, psi, ra, dec, iota, f0_fit, gamma_fit, A_fit, phase_fit, snr, snr_sqz = sorted_dataset[idx]
+    mtots, z, phi, psi, ra, dec, iota, f0_fit, gamma_fit, A_fit, phase_fit, t0_fit, snr, snr_sqz = sorted_dataset[idx, :14]
 else:
-    mtots, z, phi, psi, ra, dec, iota, f0_fit, gamma_fit, A_fit, phase_fit, snr, snr_sqz = dataset[idx]
+    mtots, z, phi, psi, ra, dec, iota, f0_fit, gamma_fit, A_fit, phase_fit, t0_fit, snr, snr_sqz = dataset[idx, :14]
 
 amplitude_samples = dataset[:, 9] #* Planck18.luminosity_distance( dataset[:,1]).value /Planck18.luminosity_distance(z).value
 gamma_samples = dataset[:, 8]
+f0_samples = dataset[:, 7]
+iQ_samples = gamma_samples / f0_samples
 
 # Compute the expected number of photons and the strain
 PM_strain = KNNModel.generate_strain(detector_nosqz, frequencies, mtots, phi, z, ra, dec, iota, psi)
@@ -84,6 +88,7 @@ snr = detector_nosqz.calculate_optimal_snr(PM_strain, frequencies)
 snr_sqz = detector_sqz.calculate_optimal_snr(PM_strain, frequencies)
 print('SNRs are: ', snr, snr_sqz)
 print('f0_fit: ', f0_fit)
+print('t0_fit: ', t0_fit)
 
 # # What I'm doing here is generating a Lorentzian signal with the same amplitude as the KNN model
 # # I'm using this as a replacemenet/test because then the amplitude of the signal that we recover with and inject with is the same!
@@ -185,7 +190,7 @@ def neg_logl_cost_function_split(x0, strain, frequencies):
 
 result_fits = []
 neg_logls = []
-for i in tqdm(range(100)):
+for i in tqdm(range(30)):
     params_0 = [np.abs(np.random.uniform(.995,1.005) * frequencies[np.argmax(np.abs(PM_strain))]), np.random.uniform(1,100), np.random.uniform(-10,1), np.random.uniform(0,2*np.pi), np.random.uniform(-.02, .05)]
     minimize_result = minimize(neg_logl_cost_function,
                                 x0=params_0,
@@ -262,6 +267,7 @@ weights = A_amps / 10**log10A_fit_pc / np.max(np.abs(PM_strain))
 
 sample_indexes = np.random.choice(10000, size=N_samples, replace=False)
 gammas = gamma_samples[sample_indexes]
+iQs = iQ_samples[sample_indexes]
 
 phi0s = np.random.uniform(0, 2*np.pi, N_samples)
 epsilons = np.random.normal(loc=0, scale=61, size=N_samples)
@@ -287,37 +293,36 @@ for l, f0 in enumerate(f0_R1d6s):
     for j in range(N_samples):
 
         A = A_amps[j]
+        iQ = iQs[j]
+        gamma = iQ * f0
 
         expected_photon_count_signal = LorentzianModel.generate_photon_count(
-            detector_nosqz, frequencies, f0=f0 + epsilons[j], gamma=gammas[j], A=amplitude_samples[sample_indexes[j]],
+            detector_nosqz, frequencies, f0=f0 + epsilons[j], gamma=gamma, A=A, #amplitude_samples[sample_indexes[j]],
             phase=phi0s[j], t0=t0s)
         expected_strain = LorentzianModel.generate_strain(
-            detector_nosqz, frequencies, f0=f0 + epsilons[j], gamma=gammas[j], A=amplitude_samples[sample_indexes[j]],
-            phase=phi0s[j], t0=t0s)
-        expected_strain_15db = LorentzianModel.generate_strain(
-            detector_nosqz, frequencies, f0=f0 + epsilons[j], gamma=gammas[j], A=amplitude_samples[sample_indexes[j]],
+            detector_nosqz, frequencies, f0=f0 + epsilons[j], gamma=gamma, A=A, #amplitude_samples[sample_indexes[j]],
             phase=phi0s[j], t0=t0s)
 
         likelihood_array_i[j] = convolved_likelihood(
             signal_photons+noise_photons, expected_photon_count_signal, detector_nosqz.noise_photon_expectation)
-        likelihood_array_i_0d01[j] = convolved_likelihood(
-            signal_photons+noise_photons_0d01, expected_photon_count_signal, 0.01 * detector_nosqz.noise_photon_expectation)
+        #likelihood_array_i_0d01[j] = convolved_likelihood(
+        #    signal_photons+noise_photons_0d01, expected_photon_count_signal, 0.01 * detector_nosqz.noise_photon_expectation)
         likelihood_array_i_0d1[j] = convolved_likelihood(
             signal_photons+noise_photons_0d1, expected_photon_count_signal, 0.1 * detector_nosqz.noise_photon_expectation)
-        likelihood_array_i_0d5[j] = convolved_likelihood(
-            signal_photons+noise_photons_0d5, expected_photon_count_signal, 0.5 * detector_nosqz.noise_photon_expectation)
+        #likelihood_array_i_0d5[j] = convolved_likelihood(
+        #    signal_photons+noise_photons_0d5, expected_photon_count_signal, 0.5 * detector_nosqz.noise_photon_expectation)
         likelihood_array_i_no_background[j] = poisson_likelihood(
             observed_photons_no_background, expected_photon_count_signal)
 
         likelihood_array_i_strain[j] = gaussian_likelihood(observed_strain, expected_strain, detector_sqz.total_psd, frequencies)
-        likelihood_array_i_strain_15db[j] = gaussian_likelihood(observed_strain_15db, expected_strain_15db, 10**(-0.5) * detector_sqz.total_psd, frequencies)
+        likelihood_array_i_strain_15db[j] = gaussian_likelihood(observed_strain_15db, expected_strain, 10**(-0.5) * detector_sqz.total_psd, frequencies)
         likelihood_array_i_strain_20db[j] = gaussian_likelihood(observed_strain_20db, expected_strain, 10**(-1) * detector_sqz.total_psd, frequencies)
 
     #, b=weights
     likelihood_event_i[l] = jax.scipy.special.logsumexp(likelihood_array_i) - jnp.log(len(likelihood_array_i))
-    likelihood_event_i_0d01[l] = jax.scipy.special.logsumexp(likelihood_array_i_0d01) - jnp.log(len(likelihood_array_i_0d01))
+    #likelihood_event_i_0d01[l] = jax.scipy.special.logsumexp(likelihood_array_i_0d01) - jnp.log(len(likelihood_array_i_0d01))
     likelihood_event_i_0d1[l] = jax.scipy.special.logsumexp(likelihood_array_i_0d1) - jnp.log(len(likelihood_array_i_0d1))
-    likelihood_event_i_0d5[l] = jax.scipy.special.logsumexp(likelihood_array_i_0d5) - jnp.log(len(likelihood_array_i_0d5))
+    #likelihood_event_i_0d5[l] = jax.scipy.special.logsumexp(likelihood_array_i_0d5) - jnp.log(len(likelihood_array_i_0d5))
     likelihood_event_i_no_background[l] = jax.scipy.special.logsumexp(likelihood_array_i_no_background) - jnp.log(len(likelihood_array_i_no_background))
     likelihood_event_i_strain[l] = jax.scipy.special.logsumexp(likelihood_array_i_strain) - jnp.log(len(likelihood_array_i_strain))
     likelihood_event_i_strain_15db[l] = jax.scipy.special.logsumexp(likelihood_array_i_strain_15db) - jnp.log(len(likelihood_array_i_strain_15db))
@@ -336,9 +341,9 @@ for l, f0 in enumerate(f0_R1d6s):
     )
 
 data = {'logls':list(likelihood_event_i),
-        'logls_0d01':list(likelihood_event_i_0d01),
+        #'logls_0d01':list(likelihood_event_i_0d01),
         'logls_0d1':list(likelihood_event_i_0d1),
-        'logls_0d5':list(likelihood_event_i_0d5),
+        #'logls_0d5':list(likelihood_event_i_0d5),
         'logls_no_background':list(likelihood_event_i_no_background),
         'logls_strain':list(likelihood_event_i_strain),
         'logls_strain_15db':list(likelihood_event_i_strain_15db),

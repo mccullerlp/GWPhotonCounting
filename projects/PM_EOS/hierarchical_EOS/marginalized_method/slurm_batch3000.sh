@@ -6,13 +6,8 @@
 #SBATCH --ntasks-per-node=1           # Number of tasks per node
 #SBATCH --cpus-per-task=2             # Number of CPU cores per task
 #SBATCH --mem=4G                      # Memory per node
-#SBATCH --time=12:00:00               # Time limit hrs:min:sec
+#SBATCH --time=3:00:00               # Time limit hrs:min:sec
 #SBATCH --array=0-999                # Run a job array with task IDs 0 to 9
-
-# --- Environment Setup ---
-## Load Anaconda module (adjust as per your cluster's setup)
-#module purge
-#module load anaconda3/2023.07.1      # Check your cluster's available module names/versions
 
 # Activate your specific conda environment
 #conda activate jaxGPU13
@@ -23,15 +18,15 @@ TASK_ID=$SLURM_ARRAY_TASK_ID
 
 # Run your Python script with the task ID as an argument (or use it to select input files)
 # -u causes unbuffered flush to output
-python -u ./generate_single_logl_R1d6.py $TASK_ID
-python -u ./generate_single_logl_R1d6.py 1$TASK_ID
-python -u ./generate_single_logl_R1d6.py 2$TASK_ID
-python -u ./generate_single_logl_R1d6.py 3$TASK_ID
-python -u ./generate_single_logl_R1d6.py 4$TASK_ID
-python -u ./generate_single_logl_R1d6.py 5$TASK_ID
-python -u ./generate_single_logl_R1d6.py 6$TASK_ID
-python -u ./generate_single_logl_R1d6.py 7$TASK_ID
-python -u ./generate_single_logl_R1d6.py 8$TASK_ID
-python -u ./generate_single_logl_R1d6.py 9$TASK_ID
-python -u ./generate_single_logl_R1d6.py 10$TASK_ID
-python -u ./generate_single_logl_R1d6.py 11$TASK_ID
+srun python -u ./generate_single_logl_R1d6.py $TASK_ID
+srun python -u ./generate_single_logl_R1d6.py 1$TASK_ID
+srun python -u ./generate_single_logl_R1d6.py 2$TASK_ID
+#python -u ./generate_single_logl_R1d6.py 3$TASK_ID
+#python -u ./generate_single_logl_R1d6.py 4$TASK_ID
+#python -u ./generate_single_logl_R1d6.py 5$TASK_ID
+#python -u ./generate_single_logl_R1d6.py 6$TASK_ID
+#python -u ./generate_single_logl_R1d6.py 7$TASK_ID
+#python -u ./generate_single_logl_R1d6.py 8$TASK_ID
+#python -u ./generate_single_logl_R1d6.py 9$TASK_ID
+#python -u ./generate_single_logl_R1d6.py 10$TASK_ID
+#python -u ./generate_single_logl_R1d6.py 11$TASK_ID
