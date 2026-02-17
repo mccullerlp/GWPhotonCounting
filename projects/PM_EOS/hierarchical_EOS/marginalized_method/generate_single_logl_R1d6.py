@@ -22,7 +22,7 @@ from tqdm import tqdm
 import jax
 
 import os
-directory_path = "results_260216b/"
+directory_path = "results_260216f/"
 os.makedirs(directory_path, exist_ok=True)
 
 fname = directory_path + f'result_CE_{idx}.json'
@@ -48,11 +48,11 @@ print("dF", frequencies[-1] - frequencies[-2])
 detector_nosqz = GWPhotonCounting.detector.Detector(
     frequencies, '/home/mcculler/projects/GWPhotonCounting/examples/data/CE_shot_psd_nosqz.csv',
     '/home/mcculler/projects/GWPhotonCounting/examples/data/CE_classical_psd.csv',
-    gamma=20, random_seed=1632, N_frequency_spaces=80, N_time_spaces=3)
+    gamma=20, random_seed=1632, N_frequency_spaces=40, N_time_spaces=5)
 
 detector_sqz = GWPhotonCounting.detector.Detector(
     frequencies, '/home/mcculler/projects/GWPhotonCounting/examples/data/CE_total_psd_sqz.csv', None,
-    gamma=20, random_seed=1632, N_frequency_spaces=80, N_time_spaces=3)
+    gamma=20, random_seed=1632, N_frequency_spaces=40, N_time_spaces=5)
 
 
 #Loading in the individual analysis from the sample
@@ -115,7 +115,7 @@ gaussian_likelihood = GWPhotonCounting.distributions.GaussianStrainLikelihood()
 convolved_likelihood = GWPhotonCounting.distributions.MixturePhotonLikelihood(poisson_likelihood, noise_likelihood)
 
 # Marginalizing over the likelihood
-N_samples = 100
+N_samples = 200
 N_t0s = 10
 
 np.random.seed()
@@ -261,7 +261,7 @@ print('neg_logls are: ', neg_logl_pc)#, neg_logl_strain * np.sum(detector_sqz.to
 print('Photon counts are: ', np.sum(signal_photons), np.sum(noise_photons), np.sum(noise_photons_0d1))
 
 #A_amps = 10**log10A_fit_pc * np.max(np.abs(PM_strain)) * 10**np.random.uniform(-2, 1, size=N_samples)
-A_amps = 10**log10A_fit_pc * np.max(np.abs(PM_strain)) * np.random.uniform(0, 2, size=N_samples)
+A_amps = 10**log10A_fit_pc * np.max(np.abs(PM_strain)) * np.random.uniform(0, 1.1, size=N_samples)
 
 weights = A_amps / 10**log10A_fit_pc / np.max(np.abs(PM_strain))
 
@@ -273,9 +273,10 @@ phi0s = np.random.uniform(0, 2*np.pi, N_samples)
 epsilons = np.random.normal(loc=0, scale=61, size=N_samples)
 
 #PM_strain
-observed_strain = PM_strain + gaussian_likelihood.generate_realization(detector_sqz.total_psd, frequencies)
-observed_strain_15db = PM_strain + gaussian_likelihood.generate_realization(10**(-0.5) * detector_sqz.total_psd, frequencies)
-observed_strain_20db = PM_strain + gaussian_likelihood.generate_realization(10**(-1) * detector_sqz.total_psd, frequencies)
+noise_rlz = gaussian_likelihood.generate_realization(detector_sqz.total_psd, frequencies)
+observed_strain = PM_strain + noise_rlz
+observed_strain_15db = PM_strain + (10**(-0.5))**0.5 * noise_rlz
+observed_strain_20db = PM_strain + (10**(-1))**0.5 * noise_rlz
 
 for l, f0 in enumerate(f0_R1d6s):
 
@@ -353,13 +354,19 @@ data = {'logls':list(likelihood_event_i),
         'logls_strain_20dbM':list(likelihood_event_i_strain_20dbMx),
         'n_signal_photons':float(jnp.sum(signal_photons)),
         'n_noise_photons':float(jnp.sum(noise_photons)),
-        'n_noise_photons_0d01':float(jnp.sum(noise_photons_0d01)),
+        #'n_noise_photons_0d01':float(jnp.sum(noise_photons_0d01)),
         'n_noise_photons_0d1':float(jnp.sum(noise_photons_0d1)),
-        'n_noise_photons_0d5':float(jnp.sum(noise_photons_0d5)),
+        #'n_noise_photons_0d5':float(jnp.sum(noise_photons_0d5)),
         'snr':float(snr), 'snr_sqz':float(snr_sqz), 'n_exp':float(n_exp),
         'mtot':mtots, 'z':z, 'phi':phi, 'psi':psi, 'ra':ra, 'dec':dec, 'iota':iota, 'f0_fit':f0_fit,
         'fpeak_fit':fpeak_fit, 'gamma_fit':gamma_fit, 'log10A_fit_pc':float(np.log10(10**log10A_fit_pc * np.max(np.abs(PM_strain)))),
-        'snr_fit_pc':float(snr_fit_pc), 'phase_fit':phase_fit}
+        'snr_fit_pc':float(snr_fit_pc),
+        'phase_fit':phase_fit,
+        }
 
 with open(fname, 'w') as f:
-    json.dump(data, f)
+    json.dump(data, f, indent=2)
+
+# to check that load succeeds
+with open(fname, 'r') as f:
+    json.load(f)

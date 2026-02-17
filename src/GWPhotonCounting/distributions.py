@@ -153,7 +153,7 @@ class GaussianStrainLikelihood():
 
         np.random.seed()
         re1, im1 = norm1*random.normal(random.PRNGKey(np.random.randint(0,100000)), shape=(2, len(frequencies[frequencies>=0])))
-        white_noise_pos = re1 + 1j * im1
+        white_noise_pos = (re1 + 1j * im1)
 
 
         white_noise_freq = np.concatenate([[0], np.conj(white_noise_pos[1:])[::-1], [re1[0]], white_noise_pos[1:]])

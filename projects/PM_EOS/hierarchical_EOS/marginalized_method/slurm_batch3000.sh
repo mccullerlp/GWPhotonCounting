@@ -14,13 +14,13 @@
 
 # --- Job Execution ---
 # Access the unique task ID using the $SLURM_ARRAY_TASK_ID environment variable
-TASK_ID=$SLURM_ARRAY_TASK_ID
+printf -v TASK_ID "%03d" "$SLURM_ARRAY_TASK_ID"
 
 # Run your Python script with the task ID as an argument (or use it to select input files)
 # -u causes unbuffered flush to output
-srun python -u ./generate_single_logl_R1d6.py $TASK_ID
-srun python -u ./generate_single_logl_R1d6.py 1$TASK_ID
-srun python -u ./generate_single_logl_R1d6.py 2$TASK_ID
+python -u ./generate_single_logl_R1d6.py $TASK_ID
+python -u ./generate_single_logl_R1d6.py 1$TASK_ID
+python -u ./generate_single_logl_R1d6.py 2$TASK_ID
 #python -u ./generate_single_logl_R1d6.py 3$TASK_ID
 #python -u ./generate_single_logl_R1d6.py 4$TASK_ID
 #python -u ./generate_single_logl_R1d6.py 5$TASK_ID

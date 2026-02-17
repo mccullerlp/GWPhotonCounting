@@ -19,7 +19,8 @@
 
 # --- Job Execution ---
 # Access the unique task ID using the $SLURM_ARRAY_TASK_ID environment variable
-TASK_ID=$SLURM_ARRAY_TASK_ID
+#TASK_ID=$SLURM_ARRAY_TASK_ID
+printf -v TASK_ID "%03d" "$SLURM_ARRAY_TASK_ID"
 
 # Run your Python script with the task ID as an argument (or use it to select input files)
 # -u causes unbuffered flush to output

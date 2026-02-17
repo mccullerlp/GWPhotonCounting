@@ -9,7 +9,7 @@ import bilby
 class Detector:
     def __init__(self, frequencies, shot_noise_psd, classical_noise_psd, detector_asd=False, ifo_name='CE',
                  base_filter_function=lorentzian_complex, N_frequency_spaces=15, N_time_spaces=10,
-                 minimum_frequency=.6e3, maximum_frequency=4e3, maximum_duration=6e-2,
+                 minimum_frequency=.6e3, maximum_frequency=4e3, maximum_duration=4e-2,
                  random_seed=1234, gaussian_noise=False, **kwargs):
         # Load and interpolate shot noise PSD data
         if detector_asd is False:
@@ -38,7 +38,7 @@ class Detector:
         print('N_total_filters from user:', self.N_time_spaces*self.N_frequency_spaces * 2)
         
         self.f0_values = jnp.geomspace(minimum_frequency, maximum_frequency, N_frequency_spaces)
-        self.t0_values = jnp.linspace(-maximum_duration * 1/4, maximum_duration * 3/4, self.N_time_spaces)
+        self.t0_values = jnp.linspace(-maximum_duration * 2/5, maximum_duration * 3/5, self.N_time_spaces)
 
         # Construct the arrays of filter functions
         self.filter_functions, self.filter_labels = self._construct_filter_functions(
@@ -79,6 +79,7 @@ class Detector:
         time_delays = jnp.exp(-2j * jnp.pi * jnp.outer(self.t0_values, frequencies))
         
         filter_functions = jnp.einsum('ij, kj -> ikj', filter_functions_at_t0, time_delays).reshape(-1, len(frequencies))
+        self.filter_function_orig = filter_functions
         
         key = jax.random.PRNGKey(random_seed)
         shuffled_indices = jax.random.permutation(key, self.N_total_filters)
