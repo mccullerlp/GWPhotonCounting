@@ -23,6 +23,10 @@ class Detector:
         else:
             self.classical_noise_psd = np.zeros_like(self.shot_noise_psd)
 
+        # find the idx of frequency=0
+        assert(np.all(frequencies[1:] >= frequencies[:-1]))
+        self.idx0 = np.searchsorted(frequencies, 0, side='right')
+
         # Generate the total PSD
         self.total_psd = self.shot_noise_psd + self.classical_noise_psd
         
@@ -102,7 +106,8 @@ class Detector:
         
         quanta_amplitude = strain/jnp.sqrt(2 * self.shot_noise_psd)
 
-        integral = jnp.einsum('...k, jk -> ...j', jnp.conj(quanta_amplitude), self.filter_functions * jnp.diff(frequencies, append=frequencies[-1]))
+        #integral = jnp.einsum('...k, jk -> ...j', jnp.conj(quanta_amplitude), self.filter_functions * jnp.diff(frequencies, append=frequencies[-1]))
+        integral = 2*jnp.real(jnp.einsum('...k, jk -> ...j', jnp.conj(quanta_amplitude[..., self.idx0:]), self.filter_functions[..., self.idx0:] * jnp.diff(frequencies[self.idx0-1:])))
 
         signal_photon_expectation = jnp.abs(integral)**2
 
