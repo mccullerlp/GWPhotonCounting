@@ -22,7 +22,7 @@ from tqdm import tqdm
 import jax
 
 import os
-directory_path = "results_260217/"
+directory_path = "results_260219T0/"
 os.makedirs(directory_path, exist_ok=True)
 
 fname = directory_path + f'result_CE_{idx}.json'
@@ -30,6 +30,8 @@ if os.path.exists(fname):
     print(f"Output file {fname} exists")
     sys.exit(0)
 
+use_perfect_T0 = True
+use_nonoise = False
 
 jax.config.update("jax_enable_x64", True)
 
@@ -134,6 +136,10 @@ _, _, noise_photons_0d1 = convolved_likelihood.generate_realization(
 _, _, noise_photons_0d5 = convolved_likelihood.generate_realization(
         detector_nosqz.calculate_signal_photon_expectation(PM_strain, frequencies),
         0.5 * detector_nosqz.noise_photon_expectation)
+
+if use_nonoise:
+    noise_photons *= 0
+    noise_photons_0d1 *= 0
 observed_photons_no_background = signal_photons
 
 likelihood_event_i = np.zeros(len(f0_R1d6s))
@@ -148,9 +154,14 @@ likelihood_event_i_strainMx = np.zeros(len(f0_R1d6s))
 likelihood_event_i_strain_15dbMx = np.zeros(len(f0_R1d6s))
 likelihood_event_i_strain_20dbMx = np.zeros(len(f0_R1d6s))
 
-N_t0s = 3
-t0s = jnp.linspace(0.00, 0.015, N_t0s)
-dt0s = (-0.01, 0.02)
+if use_perfect_T0:
+    N_t0s = 1
+    t0s = np.array([t0_fit])
+    dt0s = (0, 0.00)
+else:
+    N_t0s = 3
+    t0s = jnp.linspace(0.00, 0.015, N_t0s)
+    dt0s = (-0.01, 0.02)
 
 # Attempt at fixing the calculation in the hierarchical analysis.....
 def neg_logl_cost_function(x0, strain, frequencies, noise_psd):
@@ -259,7 +270,10 @@ epsilons = np.random.normal(loc=0, scale=61, size=N_samples)
 t0_shifts = np.random.uniform(dt0s[0], dt0s[1], N_samples)
 
 #PM_strain
+# TODO add back noise
 noise_rlz = gaussian_likelihood.generate_realization(detector_sqz.total_psd, frequencies)
+if use_nonoise:
+    noise_rlz *= 0
 observed_strain = PM_strain + noise_rlz
 observed_strain_15db = PM_strain + (10**(-0.5))**0.5 * noise_rlz
 observed_strain_20db = PM_strain + (10**(-1))**0.5 * noise_rlz
@@ -282,6 +296,9 @@ for l, f0 in enumerate(f0_R1d6s):
         A = A_amps[j]
         iQ = iQs[j]
         gamma = iQ * f0
+        # OK yes this uses a known value which it shouldn't, but primarily it just applies a
+        # very mild debiasing that occurs from the amplitude distribution. This is only noticible when noise is off
+        A *= (gamma_fit / gamma)**0.5
 
         expected_photon_count_signal = LorentzianModel.generate_photon_count(
             detector_nosqz, frequencies, f0=f0 + epsilons[j], gamma=gamma, A=A, #amplitude_samples[sample_indexes[j]],

@@ -175,8 +175,8 @@ class GaussianStrainLikelihood():
         # note no factor of two since the psd is defined in negative and positive frequencies
         # the len(frequencies) is to remove the "average" likelihood
         return (
-            len(frequencies)/2 -
-            np.sum(np.abs(residual)**2 / psd_data, axis=1) * (frequencies[1]-frequencies[0])
+            # len(frequencies)/2
+            - np.sum(np.abs(residual)**2 / psd_data, axis=1) * (frequencies[1]-frequencies[0])
             )
         #return - jnp.real(jnp.einsum('ij, ij -> i', residual,jnp.conj(residual)/psd_data)) * (frequencies[1]-frequencies[0]) # note no factor of two since the psd is defined in negative and positive frequencies
 
